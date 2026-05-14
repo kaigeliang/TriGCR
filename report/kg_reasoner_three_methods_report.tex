@@ -1,6 +1,6 @@
 \documentclass[10pt,twocolumn]{article}
 
-\usepackage[letterpaper,margin=0.68in,columnsep=0.20in]{geometry}
+\usepackage[letterpaper,margin=0.62in,columnsep=0.18in]{geometry}
 \usepackage{amsmath,amssymb}
 \usepackage{booktabs}
 \usepackage{array}
@@ -38,7 +38,7 @@
 \newcommand{\rogcwq}{RoG-CWQ}
 \newcommand{\rogweb}{RoG-WebQSP}
 
-\title{Constraint-Aware KG-Trie Reasoning for Knowledge-Grounded LLMs:\
+\title{TriGCR: Constraint-Aware KG-Trie Reasoning for Knowledge-Grounded LLMs:\
 DVI, GraphLite, and Embedding-Guided Path Selection}
 \author{AIAA 4051 Final Research Project: Knowledge Grounded LLM Reasoner\\
 Team Members: \emph{[fill in names]}\\
@@ -51,7 +51,16 @@ Project Manager: Jiujiu Chen}
 \begin{abstract}
 Large language models can answer complex questions, but their reasoning traces may contain unsupported facts. Graph-Constrained Reasoning (GCR) improves faithfulness by building a KG-Trie over knowledge-graph paths and constraining a KG-specialized LLM to generate only graph-valid reasoning paths. This project reproduces GCR, analyzes its failures, and implements three modifications to the graph-constrained reasoning pipeline: Decompose-Verify-Intersect (DVI), GraphLite, and embedding-guided KG-Trie construction. DVI adds a constraint-state controller: a general LLM decomposes a question into atomic constraints, a KG verifier collects per-constraint candidate sets, Python computes candidate intersections, and a confidence gate routes back to the GCR baseline when DVI evidence is unreliable. GraphLite replaces expensive KG-LLM verification with entity-level graph enumeration: relation selection, candidate-entity scoring, and selective two-hop expansion. Embedding-guided KG-Trie ranks candidate paths by question-path semantic similarity before trie construction and extends the path budget to preserve useful 3-hop evidence. On full RoG-CWQ, reproduced GCR reaches 54.55 F1 with Llama-3.1-8B, 54.50 F1 with Llama-2-7B, and 42.31 F1 with Qwen2-0.5B. Raw DVI alone underperforms the strongest baselines, but exact-size routed DVI improves Llama-3.1 from 54.55 to 54.63 F1 and Llama-2 from 54.50 to 54.51 F1, with oracle routing showing much larger headroom of 61.51 F1. GraphLite is substantially faster than KG-LLM DVI (3.09s vs. 12.72s per example) but lower quality (42.14 F1). Embedding-guided KG-Trie is close to Qwen GCR on full 2-hop evaluation and improves controlled 3-hop probes when paired with candidate reranking. The central conclusion is that KG path validity is necessary but not sufficient: complex KGQA needs explicit state for constraint satisfaction, answer typing, intersection, and temporal or numeric operators.
 \end{abstract}
-\vspace{0.6em}
+\vspace{0.45em}
+\begin{center}
+\setlength{\fboxsep}{6pt}
+\fcolorbox{blue!55!black}{blue!4}{%
+\begin{minipage}{0.92\textwidth}
+\footnotesize
+\textbf{\color{blue!60!black}Reproducibility Artifact:} The cleaned source release, report PDF, LaTeX source, generated figures, and compact result summary are available as \textbf{TriGCR} at \href{https://github.com/kaigeliang/TriGCR}{github.com/kaigeliang/TriGCR}. The repository separates the three implemented method tracks: DVI, GraphLite/PathScorer, and embedding-guided KG-Trie construction.
+\end{minipage}}
+\end{center}
+\vspace{0.45em}
 ]
 
 \section{Introduction}

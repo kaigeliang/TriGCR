@@ -6,7 +6,27 @@ This repository is a cleaned GitHub release package for **TriGCR**, a paper-styl
 2. **GraphLite / PathScorer**: replaces expensive KG-LLM verification with explicit graph enumeration plus neural path/entity scoring.
 3. **Embedding-guided KG-Trie**: ranks candidate paths by semantic similarity before trie construction so that useful 3-hop evidence can be added without uncontrolled path explosion.
 
-The package intentionally excludes large datasets, generated predictions, model checkpoints, caches, API keys, and local runtime directories. It includes source code, lightweight experiment summaries, and the final report PDF.
+The package intentionally excludes large datasets, generated predictions, model checkpoints, caches, API keys, and local runtime directories. It includes source code, lightweight experiment summaries, the final report PDF, and the figures used in the paper.
+
+## Visual Overview
+
+<p align="center">
+  <img src="report/figures/project_overview_handdrawn_gpt-image-2-v4.png" alt="TriGCR project overview" width="900">
+</p>
+
+<p align="center"><strong>Project overview:</strong> the three research tracks extend the reproduced GCR baseline from complementary directions. DVI adds explicit constraint state and intersection, GraphLite studies a faster verifier, and embedding-guided KG-Trie improves long-hop evidence selection.</p>
+
+<p align="center">
+  <img src="report/figures/method_architecture_implementation_blueprint_gpt-image-2-v5.png" alt="TriGCR method architecture" width="900">
+</p>
+
+<p align="center"><strong>Method architecture:</strong> implementation-level comparison of DVI, GraphLite/PathScorer, and embedding-guided KG-Trie construction.</p>
+
+<p align="center">
+  <img src="report/figures/three_method_traces_gpt-image-2-v3.png" alt="TriGCR three-method reasoning traces" width="900">
+</p>
+
+<p align="center"><strong>Question-to-answer traces:</strong> how the three methods process the same KGQA problem through decomposition, verification, path scoring, candidate construction, and final answering.</p>
 
 ## Repository Layout
 
