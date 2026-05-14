@@ -1,0 +1,17 @@
+*.pyc
+.vscode/
+.cache/
+.conda_deps/
+.conda_env/
+.conda_pkgs/
+.home/
+.pip-cache/
+logs
+script/
+tmp/
+.env
+save_models
+accelerate_configs/
+wandb/
+data
+results/

@@ -1,0 +1,53 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets/
+.secrets/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Environments
+.venv/
+venv/
+env/
+ENV/
+conda-meta/
+
+# Large/generated experiment artifacts
+data/
+results/
+logs/
+tmp/
+outputs/
+checkpoints/
+models/
+*.ckpt
+*.pt
+*.pth
+*.safetensors
+*.bin
+predictions.jsonl
+*.jsonl
+
+# Local runtime/tool caches
+.codex/
+.agents/
+local_runtime/
+.tools/
+.cache/
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

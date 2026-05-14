@@ -1,0 +1,10 @@
+# Metadata buckets where DVI was consistently competitive across the
+# completed Llama-3.1 and Llama-2 CWQ runs. These are prediction-time
+# metadata only: final candidate count, strict intersection size, relaxation,
+# fallback flag, and number of relation constraints.
+final=1|strict=1|relaxed=False|fallback=False|rel=1
+final=2|strict=2|relaxed=False|fallback=False|rel=2
+final=2|strict=0|relaxed=True|fallback=False|rel=2
+final=4|strict=0|relaxed=True|fallback=False|rel=2
+final=8|strict=8|relaxed=False|fallback=True|rel=1
+final=9|strict=9|relaxed=False|fallback=True|rel=1

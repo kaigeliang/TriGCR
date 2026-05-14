@@ -1,0 +1,807 @@
+diff --git a/.gitignore b/.gitignore
+index 00d96d1..2b41128 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -1,5 +1,11 @@
+ *.pyc
+ .vscode/
++.cache/
++.conda_deps/
++.conda_env/
++.conda_pkgs/
++.home/
++.pip-cache/
+ logs
+ script/
+ tmp/
+@@ -8,4 +14,4 @@ save_models
+ accelerate_configs/
+ wandb/
+ data
+-results/
+\ No newline at end of file
++results/
+diff --git a/README.md b/README.md
+index 024aad7..7a8b9d8 100644
+--- a/README.md
++++ b/README.md
+@@ -8,20 +8,26 @@ Graph-constrained Reasoning (GCR) is a novel framework that  bridges structured
+ 
+ ## Dependencies
+ 
+-We use [Poetry](https://python-poetry.org/) to manage dependencies.  CUDA 12.1 is recommended.
++CUDA 12.1 is recommended. The examples below use `requirements.txt` to install Python dependencies.
+ 
+-Step 1: Install `Poetry`   
+-`curl -sSL https://install.python-poetry.org | python3 -`
++Step 1: Configure the proxy before downloading packages, if required by your network.
++
++```bash
++export HTTP_PROXY=http://127.0.0.1:7890
++export HTTPS_PROXY=http://127.0.0.1:7890
++export ALL_PROXY=http://127.0.0.1:7890
++```
+ 
+ Step 2: Create a conda environment and install dependencies
+ 
+ ```bash
+ conda create -n GCR python=3.12
+ conda activate GCR
+-poetry install
++pip install torch==2.4.1 --index-url https://download.pytorch.org/whl/cu121
++pip install -r requirements.txt
+ ```
+ 
+-Step 3: Install Flash-attention for fast decoding
++Step 3: Install Flash-attention for fast decoding (optional, GPU/CUDA only)
+ 
+ ```bash
+ pip install flash-attn --no-build-isolation
+diff --git a/requirements.txt b/requirements.txt
+new file mode 100644
+index 0000000..4aa647a
+--- /dev/null
++++ b/requirements.txt
+@@ -0,0 +1,22 @@
++# Graph-constrained Reasoning dependencies
++# Install GPU PyTorch first, then install this file.
++
++transformers==4.44.0
++accelerate==0.30.1
++peft==0.11.1
++deepspeed==0.14.4
++tiktoken==0.7.0
++openai==1.37.1
++datasets==2.20.0
++python-dotenv==1.0.1
++marisa-trie==1.2.0
++scikit-learn==1.5.1
++bitsandbytes==0.43.2
++trl==0.9.4
++sentencepiece==0.2.0
++protobuf==5.27.2
++wandb==0.17.5
++pytest==8.2.2
++
++# Install this repository as an editable package so scripts can import `src`.
++-e .
+diff --git a/scripts/analyze_kg_results.py b/scripts/analyze_kg_results.py
+new file mode 100755
+index 0000000..004d362
+--- /dev/null
++++ b/scripts/analyze_kg_results.py
+@@ -0,0 +1,143 @@
++#!/usr/bin/env python
++import argparse
++import json
++import os
++import re
++from collections import Counter, defaultdict
++from statistics import mean
++
++from datasets import load_dataset
++from src.utils.qa_utils import eval_f1, eval_hit, extract_topk_prediction
++
++
++def load_jsonl(path):
++    rows = []
++    with open(path, encoding="utf-8") as handle:
++        for line in handle:
++            line = line.strip()
++            if line:
++                rows.append(json.loads(line))
++    return rows
++
++
++def infer_question_type(question, row=None):
++    if row and row.get("compositionality_type"):
++        return row["compositionality_type"]
++    text = question.lower()
++    if re.search(r"\b(before|after|during|when|year|date|first|last|previous|next)\b", text):
++        return "temporal"
++    if re.search(r"\b(highest|largest|smallest|longest|shortest|most|least|top|first|last|number of|how many)\b", text):
++        return "comparative_or_count"
++    if re.search(r"\b(and|both|also|as well as|while|who .* and |that .* and )\b", text):
++        return "conjunctive_multi_constraint"
++    if len(row.get("q_entity", [])) > 1 if row else False:
++        return "multi_entity"
++    if re.search(r"\b(type|kind|category|profession|occupation|nationality)\b", text):
++        return "type_constraint"
++    return "other"
++
++
++def parse_prediction_answers(prediction, topk):
++    prediction = extract_topk_prediction(prediction, topk)
++    answers = []
++    paths = []
++    for item in prediction:
++        answer = item.split("# Answer:\n")[-1].strip()
++        path = item.split("# Answer:\n")[0].split("# Reasoning Path:\n")[-1].strip()
++        answers.append(answer)
++        paths.append(path)
++    return prediction, answers, paths
++
++
++def main():
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--prediction", required=True)
++    parser.add_argument("--dataset", default="rmanluo/RoG-cwq")
++    parser.add_argument("--split", default="test[:20]")
++    parser.add_argument("--topk", type=int, default=-1)
++    parser.add_argument("--output", default=None)
++    parser.add_argument("--max_failures", type=int, default=10)
++    args = parser.parse_args()
++
++    rows = load_dataset(args.dataset, split=args.split)
++    by_id = {row["id"]: row for row in rows}
++    predictions = load_jsonl(args.prediction)
++
++    summary = defaultdict(lambda: {"n": 0, "hit": [], "f1": [], "precision": [], "recall": []})
++    failures = []
++    overall = {"hit": [], "f1": [], "precision": [], "recall": []}
++
++    for pred in predictions:
++        row = by_id.get(pred["id"], {})
++        question = pred.get("question") or row.get("question", "")
++        qtype = infer_question_type(question, row)
++        _, answers, paths = parse_prediction_answers(pred["prediction"], args.topk)
++        gold = list(set(pred.get("ground_truth") or row.get("answer", [])))
++        f1, precision, recall = eval_f1(answers, gold)
++        hit = eval_hit(" ".join(pred["prediction"] if isinstance(pred["prediction"], list) else [pred["prediction"]]), gold)
++
++        bucket = summary[qtype]
++        bucket["n"] += 1
++        for key, value in [("hit", hit), ("f1", f1), ("precision", precision), ("recall", recall)]:
++            bucket[key].append(value)
++            overall[key].append(value)
++
++        if not hit:
++            failures.append(
++                {
++                    "id": pred["id"],
++                    "type": qtype,
++                    "question": question,
++                    "q_entity": row.get("q_entity", []),
++                    "gold": gold,
++                    "predicted_answers": answers,
++                    "predicted_paths": paths[:3],
++                }
++            )
++
++    lines = []
++    lines.append("# KG Result Analysis")
++    lines.append("")
++    lines.append(f"Prediction file: `{args.prediction}`")
++    lines.append(f"Dataset: `{args.dataset}` split `{args.split}`")
++    lines.append("")
++    lines.append("## Overall")
++    lines.append("")
++    lines.append("| n | Hit@1/Hit | F1 | Precision | Recall |")
++    lines.append("|---:|---:|---:|---:|---:|")
++    lines.append(
++        f"| {len(predictions)} | {mean(overall['hit'])*100:.2f} | {mean(overall['f1'])*100:.2f} | {mean(overall['precision'])*100:.2f} | {mean(overall['recall'])*100:.2f} |"
++    )
++    lines.append("")
++    lines.append("## By Question Type")
++    lines.append("")
++    lines.append("| Type | n | Hit | F1 | Precision | Recall |")
++    lines.append("|---|---:|---:|---:|---:|---:|")
++    for qtype, stats in sorted(summary.items(), key=lambda item: (-item[1]["n"], item[0])):
++        lines.append(
++            f"| {qtype} | {stats['n']} | {mean(stats['hit'])*100:.2f} | {mean(stats['f1'])*100:.2f} | {mean(stats['precision'])*100:.2f} | {mean(stats['recall'])*100:.2f} |"
++        )
++    lines.append("")
++    lines.append("## Failure Cases")
++    lines.append("")
++    for item in failures[: args.max_failures]:
++        lines.append(f"### {item['id']} ({item['type']})")
++        lines.append(f"- Question: {item['question']}")
++        lines.append(f"- Topic entities: {item['q_entity']}")
++        lines.append(f"- Gold: {item['gold']}")
++        lines.append(f"- Predicted answers: {item['predicted_answers']}")
++        lines.append("- Top predicted paths:")
++        for path in item["predicted_paths"]:
++            lines.append(f"  - {path}")
++        lines.append("")
++
++    content = "\n".join(lines)
++    if args.output:
++        os.makedirs(os.path.dirname(args.output), exist_ok=True)
++        with open(args.output, "w", encoding="utf-8") as handle:
++            handle.write(content + "\n")
++    print(content)
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/src/qa_prompt_builder.py b/src/qa_prompt_builder.py
+index 99203b0..d3c4822 100644
+--- a/src/qa_prompt_builder.py
++++ b/src/qa_prompt_builder.py
+@@ -1,5 +1,7 @@
+ import src.utils as utils
+ import random
++import math
++import re
+ from typing import Callable
+ from .trie import MarisaTrie
+ 
+@@ -12,14 +14,258 @@ PROMPT_TEMPLATE = """{input}
+ {instruction}"""
+ 
+ class GraphConstrainedPromptBuilder(object):
+-    def __init__(self, tokenizer, prompt="zero-shot", undirected = False,index_path_length=2, add_rule=False) -> None:
++    _embedding_model_cache = {}
++
++    def __init__(
++        self,
++        tokenizer,
++        prompt="zero-shot",
++        undirected=False,
++        index_path_length=2,
++        add_rule=False,
++        constraint_aware=False,
++        max_index_paths=None,
++        require_shared_tail=False,
++        embedding_guided=False,
++        embedding_model_path="sentence-transformers/all-MiniLM-L6-v2",
++        embedding_candidate_paths=10000,
++        embedding_batch_size=64,
++        embedding_device="cpu",
++        embedding_max_length=128,
++        hybrid_guided=False,
++        hybrid_embedding_weight=1.0,
++        hybrid_relation_weight=0.25,
++        hybrid_entity_weight=0.10,
++        hybrid_coverage_weight=0.20,
++        hybrid_specificity_weight=0.10,
++        hybrid_length_penalty=0.03,
++        filter_generic_sources=False,
++        generic_source_threshold=0.05,
++    ) -> None:
+         self.tokenizer = tokenizer
+         self.prompt = prompt
+         self.undirected = undirected
+         self.index_path_length = index_path_length
+         self.add_rule = add_rule
++        self.constraint_aware = constraint_aware
++        self.max_index_paths = max_index_paths
++        self.require_shared_tail = require_shared_tail
++        self.embedding_guided = embedding_guided
++        self.embedding_model_path = embedding_model_path
++        self.embedding_candidate_paths = embedding_candidate_paths
++        self.embedding_batch_size = embedding_batch_size
++        self.embedding_device = embedding_device
++        self.embedding_max_length = embedding_max_length
++        self.hybrid_guided = hybrid_guided
++        self.hybrid_embedding_weight = hybrid_embedding_weight
++        self.hybrid_relation_weight = hybrid_relation_weight
++        self.hybrid_entity_weight = hybrid_entity_weight
++        self.hybrid_coverage_weight = hybrid_coverage_weight
++        self.hybrid_specificity_weight = hybrid_specificity_weight
++        self.hybrid_length_penalty = hybrid_length_penalty
++        self.filter_generic_sources = filter_generic_sources
++        self.generic_source_threshold = generic_source_threshold
+         self.prompt_template = self.get_prompt_template(self.prompt)
+ 
++    def get_path_collection_limit(self):
++        if self.embedding_guided or self.hybrid_guided:
++            return self.embedding_candidate_paths
++        return self.max_index_paths
++
++    def get_embedding_model(self):
++        cache_key = (self.embedding_model_path, self.embedding_device)
++        if cache_key not in self._embedding_model_cache:
++            import torch
++            from transformers import AutoModel, AutoTokenizer
++
++            tokenizer = AutoTokenizer.from_pretrained(self.embedding_model_path)
++            model = AutoModel.from_pretrained(self.embedding_model_path)
++            model.eval()
++            model.to(self.embedding_device)
++            self._embedding_model_cache[cache_key] = (tokenizer, model)
++        return self._embedding_model_cache[cache_key]
++
++    @staticmethod
++    def path_to_embedding_text(path):
++        pieces = []
++        for index, (head, relation, tail) in enumerate(path):
++            relation = relation.replace(".", " ").replace("_", " ")
++            if index == 0:
++                pieces.extend([head, relation, tail])
++            else:
++                pieces.extend([relation, tail])
++        return " ".join(pieces)
++
++    STOPWORDS = {
++        "a", "an", "and", "are", "as", "at", "be", "before", "after", "between",
++        "both", "by", "did", "do", "does", "for", "from", "has", "have", "had",
++        "he", "her", "his", "in", "into", "is", "it", "its", "of", "on", "or",
++        "that", "the", "their", "there", "these", "this", "to", "was", "were",
++        "what", "when", "where", "which", "who", "whom", "whose", "with", "won",
++    }
++    GENERIC_ENTITY_TERMS = {
++        "actor", "actors", "album", "award", "bachelor", "book", "city", "college",
++        "company", "country", "degree", "director", "entity", "film", "films",
++        "language", "man", "movie", "nation", "person", "place", "prime",
++        "school", "state", "title", "university", "woman", "world", "year",
++    }
++
++    @classmethod
++    def normalize_text_tokens(cls, text):
++        tokens = re.findall(r"[a-z0-9]+", str(text).lower())
++        return {token for token in tokens if token not in cls.STOPWORDS and len(token) > 1}
++
++    @classmethod
++    def relation_tokens(cls, relation):
++        relation = str(relation).replace(".", " ").replace("_", " ")
++        return cls.normalize_text_tokens(relation)
++
++    @staticmethod
++    def normalized_overlap(left_terms, right_terms):
++        if not left_terms or not right_terms:
++            return 0.0
++        return len(left_terms & right_terms) / math.sqrt(len(left_terms) * len(right_terms))
++
++    @classmethod
++    def source_specificity(cls, source):
++        source_terms = cls.normalize_text_tokens(source)
++        if not source_terms:
++            return 0.0
++        specific_terms = source_terms - cls.GENERIC_ENTITY_TERMS
++        return len(specific_terms) / len(source_terms)
++
++    def encode_texts(self, texts):
++        import torch
++        import torch.nn.functional as F
++
++        tokenizer, model = self.get_embedding_model()
++        all_embeddings = []
++        for start in range(0, len(texts), self.embedding_batch_size):
++            batch = texts[start : start + self.embedding_batch_size]
++            encoded = tokenizer(
++                batch,
++                padding=True,
++                truncation=True,
++                max_length=self.embedding_max_length,
++                return_tensors="pt",
++            )
++            encoded = {key: value.to(self.embedding_device) for key, value in encoded.items()}
++            with torch.no_grad():
++                output = model(**encoded)
++            mask = encoded["attention_mask"].unsqueeze(-1).float()
++            pooled = (output.last_hidden_state * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1e-9)
++            all_embeddings.append(F.normalize(pooled, p=2, dim=1).cpu())
++        return torch.cat(all_embeddings, dim=0)
++
++    def select_embedding_guided_paths(self, question, paths_list):
++        if not paths_list or self.max_index_paths is None or self.max_index_paths <= 0:
++            return paths_list
++
++        query_embedding = self.encode_texts([question])[0]
++        path_texts = [self.path_to_embedding_text(path) for path in paths_list]
++        path_embeddings = self.encode_texts(path_texts)
++        scores = path_embeddings @ query_embedding
++        ranked_indices = scores.argsort(descending=True).tolist()
++        selected_indices = ranked_indices[: self.max_index_paths]
++        return [paths_list[index] for index in selected_indices]
++
++    def maybe_filter_generic_source_paths(self, paths_list, source_entities):
++        if not self.filter_generic_sources or len(source_entities) <= 1:
++            return paths_list
++
++        specific_sources = {
++            source
++            for source in source_entities
++            if self.source_specificity(source) > self.generic_source_threshold
++        }
++        if not specific_sources:
++            return paths_list
++
++        filtered_paths = [path for path in paths_list if path and path[0][0] in specific_sources]
++        return filtered_paths or paths_list
++
++    def select_hybrid_guided_paths(self, question, paths_list, source_entities):
++        if not paths_list or self.max_index_paths is None or self.max_index_paths <= 0:
++            return paths_list
++
++        paths_list = self.maybe_filter_generic_source_paths(paths_list, source_entities)
++
++        query_embedding = self.encode_texts([question])[0]
++        path_texts = [self.path_to_embedding_text(path) for path in paths_list]
++        path_embeddings = self.encode_texts(path_texts)
++        embedding_scores = (path_embeddings @ query_embedding).tolist()
++        question_terms = self.normalize_text_tokens(question)
++
++        tail_to_sources = {}
++        for path in paths_list:
++            if not path:
++                continue
++            tail_to_sources.setdefault(path[-1][-1], set()).add(path[0][0])
++
++        source_count = max(1, len(source_entities))
++        scored_paths = []
++        for index, path in enumerate(paths_list):
++            relation_terms = set()
++            entity_terms = set()
++            for head, relation, tail in path:
++                relation_terms.update(self.relation_tokens(relation))
++                entity_terms.update(self.normalize_text_tokens(head))
++                entity_terms.update(self.normalize_text_tokens(tail))
++
++            tail = path[-1][-1] if path else ""
++            shared_tail_count = len(tail_to_sources.get(tail, set()))
++            coverage_score = (shared_tail_count - 1) / max(1, source_count - 1)
++            relation_score = self.normalized_overlap(question_terms, relation_terms)
++            entity_score = self.normalized_overlap(question_terms, entity_terms)
++            specificity_score = self.source_specificity(path[0][0]) if path else 0.0
++            length_score = len(path) / max(1, self.index_path_length)
++
++            score = (
++                self.hybrid_embedding_weight * embedding_scores[index]
++                + self.hybrid_relation_weight * relation_score
++                + self.hybrid_entity_weight * entity_score
++                + self.hybrid_coverage_weight * coverage_score
++                + self.hybrid_specificity_weight * specificity_score
++                - self.hybrid_length_penalty * length_score
++            )
++            scored_paths.append((score, len(path), path_texts[index], index))
++
++        ranked_paths = sorted(scored_paths, key=lambda item: (-item[0], item[1], item[2]))
++        selected_indices = [index for _, _, _, index in ranked_paths[: self.max_index_paths]]
++        return [paths_list[index] for index in selected_indices]
++
++    def select_constraint_aware_paths(self, paths_list, source_entities):
++        if not paths_list:
++            return paths_list
++
++        tail_to_sources = {}
++        for path in paths_list:
++            if not path:
++                continue
++            source = path[0][0]
++            tail = path[-1][-1]
++            tail_to_sources.setdefault(tail, set()).add(source)
++
++        def score(path):
++            tail = path[-1][-1] if path else ""
++            source_coverage = len(tail_to_sources.get(tail, set()))
++            starts_from_topic = 1 if path and path[0][0] in source_entities else 0
++            return (-source_coverage, -starts_from_topic, len(path), utils.path_to_string(path))
++
++        ranked_paths = sorted(paths_list, key=score)
++        if self.require_shared_tail and len(source_entities) > 1:
++            integrated_paths = [
++                path
++                for path in ranked_paths
++                if len(tail_to_sources.get(path[-1][-1], set())) > 1
++            ]
++            if integrated_paths:
++                ranked_paths = integrated_paths
++
++        if self.max_index_paths is not None and self.max_index_paths > 0:
++            ranked_paths = ranked_paths[: self.max_index_paths]
++        return ranked_paths
++
+     def get_prompt_template(self, template_name):
+         try:
+             template_name = template_name.upper().replace("-", "_") + "_PROMPT"
+@@ -55,9 +301,21 @@ class GraphConstrainedPromptBuilder(object):
+                 if len(rules) > 0:
+                     paths_list = self.apply_rules(g, rules, question_dict["q_entity"])
+                 else:
+-                    paths_list = utils.dfs(g, question_dict["q_entity"], self.index_path_length)
++                    paths_list = utils.dfs_limited(g, question_dict["q_entity"], self.index_path_length, self.get_path_collection_limit())
+             else:
+-                paths_list = utils.dfs(g, question_dict["q_entity"], self.index_path_length)
++                paths_list = utils.dfs_limited(g, question_dict["q_entity"], self.index_path_length, self.get_path_collection_limit())
++
++        if self.hybrid_guided:
++            paths_list = self.select_hybrid_guided_paths(
++                question_dict["question"], paths_list, question_dict["q_entity"]
++            )
++        elif self.embedding_guided:
++            paths_list = self.select_embedding_guided_paths(question_dict["question"], paths_list)
++
++        if self.constraint_aware:
++            paths_list = self.select_constraint_aware_paths(
++                paths_list, question_dict["q_entity"]
++            )
+ 
+         paths_list_str = [utils.path_to_string(p) for p in paths_list]
+         if len(paths_list_str) == 0:
+@@ -168,7 +426,19 @@ class JointReasoningPromptBuilder(GraphConstrainedPromptBuilder):
+             paths_list = question_dict["paths"]
+         else:
+             g = utils.build_graph(question_dict["graph"], self.undirected)
+-            paths_list = utils.dfs(g, question_dict["q_entity"], self.index_path_length)
++            paths_list = utils.dfs_limited(g, question_dict["q_entity"], self.index_path_length, self.get_path_collection_limit())
++
++        if self.hybrid_guided:
++            paths_list = self.select_hybrid_guided_paths(
++                question_dict["question"], paths_list, question_dict["q_entity"]
++            )
++        elif self.embedding_guided:
++            paths_list = self.select_embedding_guided_paths(question_dict["question"], paths_list)
++
++        if self.constraint_aware:
++            paths_list = self.select_constraint_aware_paths(
++                paths_list, question_dict["q_entity"]
++            )
+ 
+         paths_list_str = [f"{self.PATH_START_TOKEN}{utils.path_to_string(path)}{self.PATH_END_TOKEN}" for path in paths_list]
+         if len(paths_list_str) == 0:
+diff --git a/src/utils/graph_utils.py b/src/utils/graph_utils.py
+index 2690c94..ce5bb49 100644
+--- a/src/utils/graph_utils.py
++++ b/src/utils/graph_utils.py
+@@ -46,6 +46,47 @@ def dfs(graph, start_node_list, max_length):
+     return list(path_lists)
+ 
+ 
++def dfs_limited(graph, start_node_list, max_length, max_paths):
++    """
++    Find paths within max_length starting from start_node_list, stopping once
++    max_paths paths have been collected. This is useful for high-hop ablations
++    where exhaustive DFS can explode combinatorially.
++    """
++    if max_paths is None or max_paths <= 0:
++        return dfs(graph, start_node_list, max_length)
++
++    path_lists = []
++    seen = set()
++
++    def add_path(path):
++        key = tuple(path)
++        if key not in seen:
++            seen.add(key)
++            path_lists.append(key)
++
++    def dfs_visit(node, path):
++        if len(path_lists) >= max_paths or len(path) > max_length:
++            return
++        try:
++            for neighbor in graph.neighbors(node):
++                if len(path_lists) >= max_paths:
++                    break
++                rel = graph[node][neighbor]["relation"]
++                new_path = path + [(node, rel, neighbor)]
++                if len(new_path) <= max_length:
++                    add_path(new_path)
++                dfs_visit(neighbor, new_path)
++        except Exception as e:
++            print(e)
++
++    for start_node in start_node_list:
++        if len(path_lists) >= max_paths:
++            break
++        dfs_visit(start_node, [])
++
++    return list(path_lists)
++
++
+ # 定义一个函数来进行宽度优先搜索
+ def bfs_with_rule(graph, start_node, target_rule, max_p=10):
+     result_paths = []
+diff --git a/workflow/predict_paths_and_answers.py b/workflow/predict_paths_and_answers.py
+index 5fe7808..a5ffab9 100644
+--- a/workflow/predict_paths_and_answers.py
++++ b/workflow/predict_paths_and_answers.py
+@@ -5,7 +5,7 @@ from tqdm import tqdm
+ from src.llms import get_registed_model
+ import os
+ from datasets import load_dataset, Dataset
+-from src.utils.qa_utils import eval_path_result_w_ans
++from src.utils.qa_utils import eval_path_result_w_ans, extract_topk_prediction
+ from src import utils
+ import json
+ from multiprocessing import Pool
+@@ -54,7 +54,7 @@ def get_output_file(path, force=False):
+         fout = open(path, "a")
+         return fout, processed_results
+ 
+-def prediction(data, processed_list, input_builder, model):
++def prediction(data, processed_list, input_builder, model, output_topk=-1):
+     question = data["question"]
+     answer = data["answer"]
+     id = data["id"]
+@@ -78,6 +78,8 @@ def prediction(data, processed_list, input_builder, model):
+     )
+     if prediction is None:
+         return None
++    if output_topk is not None and output_topk > 0:
++        prediction = extract_topk_prediction(prediction, output_topk)
+     result = {
+         "id": id,
+         "question": question,
+@@ -111,7 +113,31 @@ def main(args, LLM):
+     
+     print("Prepare pipline for inference...")
+     model.prepare_for_inference()
+-    input_builder = PathGenerationWithAnswerPromptBuilder(model.tokenizer, args.prompt_mode, index_path_length=args.index_path_length, undirected=args.undirected, add_rule=args.add_rule)
++    input_builder = PathGenerationWithAnswerPromptBuilder(
++        model.tokenizer,
++        args.prompt_mode,
++        index_path_length=args.index_path_length,
++        undirected=args.undirected,
++        add_rule=args.add_rule,
++        constraint_aware=args.constraint_aware,
++        max_index_paths=args.max_index_paths,
++        require_shared_tail=args.require_shared_tail,
++        embedding_guided=args.embedding_guided,
++        embedding_model_path=args.embedding_model_path,
++        embedding_candidate_paths=args.embedding_candidate_paths,
++        embedding_batch_size=args.embedding_batch_size,
++        embedding_device=args.embedding_device,
++        embedding_max_length=args.embedding_max_length,
++        hybrid_guided=args.hybrid_guided,
++        hybrid_embedding_weight=args.hybrid_embedding_weight,
++        hybrid_relation_weight=args.hybrid_relation_weight,
++        hybrid_entity_weight=args.hybrid_entity_weight,
++        hybrid_coverage_weight=args.hybrid_coverage_weight,
++        hybrid_specificity_weight=args.hybrid_specificity_weight,
++        hybrid_length_penalty=args.hybrid_length_penalty,
++        filter_generic_sources=args.filter_generic_sources,
++        generic_source_threshold=args.generic_source_threshold,
++    )
+     
+     # Save args file
+     with open(os.path.join(output_dir, 'args.txt'), 'w') as f:
+@@ -128,6 +154,7 @@ def main(args, LLM):
+                         processed_list=processed_list,
+                         input_builder=input_builder,
+                         model=model,
++                        output_topk=args.output_topk,
+                     ),
+                     dataset,
+                 ),
+@@ -140,7 +167,7 @@ def main(args, LLM):
+                     fout.flush()
+     else:
+         for data in tqdm(dataset):
+-            res = prediction(data, processed_list, input_builder, model)
++            res = prediction(data, processed_list, input_builder, model, output_topk=args.output_topk)
+             if res is not None:
+                 if args.debug:
+                     print(json.dumps(res))
+@@ -167,11 +194,120 @@ if __name__ == "__main__":
+     argparser.add_argument("--prompt_mode", type=str, default="zero-shot", choices=["zero-shot", "mcq-zero-shot", "few-shot"])
+     argparser.add_argument("--filter_empty", action="store_true")
+     argparser.add_argument("--add_rule", action="store_true")
++    argparser.add_argument(
++        "--constraint_aware",
++        action="store_true",
++        help="rank and optionally filter KG-Trie paths by shared terminal-entity coverage",
++    )
++    argparser.add_argument(
++        "--max_index_paths",
++        type=int,
++        default=None,
++        help="maximum number of ranked paths to keep in the KG-Trie index",
++    )
++    argparser.add_argument(
++        "--require_shared_tail",
++        action="store_true",
++        help="keep only paths whose terminal entity is reachable from multiple topic entities when possible",
++    )
++    argparser.add_argument(
++        "--embedding_guided",
++        action="store_true",
++        help="rank candidate KG paths by question-path embedding similarity before building the KG-Trie",
++    )
++    argparser.add_argument(
++        "--embedding_model_path",
++        type=str,
++        default="sentence-transformers/all-MiniLM-L6-v2",
++        help="embedding model used for question-path path ranking",
++    )
++    argparser.add_argument(
++        "--embedding_candidate_paths",
++        type=int,
++        default=10000,
++        help="number of DFS candidate paths collected before embedding ranking",
++    )
++    argparser.add_argument(
++        "--embedding_batch_size",
++        type=int,
++        default=64,
++        help="batch size for embedding path ranking",
++    )
++    argparser.add_argument(
++        "--embedding_device",
++        type=str,
++        default="cpu",
++        help="device for the embedding model, e.g. cpu or cuda:0",
++    )
++    argparser.add_argument(
++        "--embedding_max_length",
++        type=int,
++        default=128,
++        help="maximum token length for embedding model inputs",
++    )
++    argparser.add_argument(
++        "--hybrid_guided",
++        action="store_true",
++        help="rank candidate KG paths with embedding, relation lexical overlap, entity overlap, and structural coverage",
++    )
++    argparser.add_argument(
++        "--hybrid_embedding_weight",
++        type=float,
++        default=1.0,
++        help="weight for question-path embedding similarity in hybrid path ranking",
++    )
++    argparser.add_argument(
++        "--hybrid_relation_weight",
++        type=float,
++        default=0.25,
++        help="weight for relation-name keyword overlap in hybrid path ranking",
++    )
++    argparser.add_argument(
++        "--hybrid_entity_weight",
++        type=float,
++        default=0.10,
++        help="weight for entity-name keyword overlap in hybrid path ranking",
++    )
++    argparser.add_argument(
++        "--hybrid_coverage_weight",
++        type=float,
++        default=0.20,
++        help="weight for shared-tail structural coverage across topic entities",
++    )
++    argparser.add_argument(
++        "--hybrid_specificity_weight",
++        type=float,
++        default=0.10,
++        help="weight for preferring paths that start from specific rather than generic topic entities",
++    )
++    argparser.add_argument(
++        "--hybrid_length_penalty",
++        type=float,
++        default=0.03,
++        help="small penalty for longer paths in hybrid path ranking",
++    )
++    argparser.add_argument(
++        "--filter_generic_sources",
++        action="store_true",
++        help="for multi-entity questions, drop paths from generic type-like topic entities when specific sources are available",
++    )
++    argparser.add_argument(
++        "--generic_source_threshold",
++        type=float,
++        default=0.05,
++        help="minimum source specificity needed to avoid generic-source filtering",
++    )
+     argparser.add_argument(
+         "--rule_path",
+         type=str,
+         default="results/gen_rule_path/webqsp_undirected/Llama-2-7b-chat-hf_align-spectoken-joint/test/predictions_3_False.jsonl",
+     )
++    argparser.add_argument(
++        "--output_topk",
++        type=int,
++        default=-1,
++        help="keep only the top-k generated candidates before saving and evaluating; -1 keeps all candidates",
++    )
+     argparser.add_argument("--prefix", type=str, default="")
+ 
+     args, _  = argparser.parse_known_args()
