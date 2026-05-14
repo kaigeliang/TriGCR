@@ -28,6 +28,20 @@ The package intentionally excludes large datasets, generated predictions, model 
 
 <p align="center"><strong>Question-to-answer traces:</strong> how the three methods process the same KGQA problem through decomposition, verification, path scoring, candidate construction, and final answering.</p>
 
+
+## Key Results
+
+| System | Setting | F1 | Hit@1 | Time / sample |
+|---|---|---:|---:|---:|
+| GCR baseline + Llama-3.1-8B | RoG-CWQ full test | 54.55 | 55.88 | 2.06s |
+| Routed DVI + Llama-3.1-8B | <code>&#124;C&#124;=2</code> gate | **54.63** | **56.22** | 6.58s |
+| GCR baseline + Llama-2-7B | RoG-CWQ full test | 54.50 | **57.12** | 6.27s |
+| Routed DVI + Llama-2-7B | <code>&#124;C&#124;=2</code> gate | **54.51** | 56.92 | 6.53s |
+| GraphLite / PathScorer | Entity/path verifier | 42.14 | 45.09 | **3.09s** |
+| Embedding-guided KG-Trie | CWQ20, 3-hop embedding top-1 | 45.56 | -- | probe |
+
+Full experiment tables, ablations, oracle-routing headroom, and representative failure cases are in [`results_summary/EXPERIMENT_TABLES.md`](results_summary/EXPERIMENT_TABLES.md).
+
 ## Repository Layout
 
 ```text
@@ -41,7 +55,8 @@ TriGCR/
 │   ├── kg_reasoner_three_methods_report.tex
 │   └── figures/                 # Overview, architecture, and trace figures used in the report
 ├── results_summary/
-│   └── RESULTS.md               # Compact metric summary from archived experiments
+│   ├── RESULTS.md               # Compact metric summary from archived experiments
+│   └── EXPERIMENT_TABLES.md      # GitHub-readable main tables and ablations
 ├── docs/
 │   └── assignment_requirements.pdf
 ├── environment_GCR.yml
