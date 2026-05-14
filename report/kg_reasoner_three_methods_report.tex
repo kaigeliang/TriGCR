@@ -657,15 +657,6 @@ We reproduced GCR and implemented three modifications for complex KGQA: DVI, Gra
 
 The main empirical result is conservative but useful: exact-size routed DVI slightly improves the strongest reproduced GCR baselines, while oracle routing shows that DVI and GCR have substantial complementarity. GraphLite is faster but currently lower quality. Embedding-guided path selection improves controlled 3-hop probes but does not beat the full 2-hop Qwen baseline by itself. The main research lesson is that KG path validity is only the first layer of faithful reasoning. Complex KGQA needs explicit state for constraint coverage, answer type, entity intersection, and executable temporal, numeric, and superlative operators.
 
-\section*{Individual Contributions}
-\begin{itemize}
-  \item \textbf{Member 1}: baseline reproduction, environment setup, model downloads, and full-test shard execution.
-  \item \textbf{Member 2}: DVI controller, GraphLite/PathScorer verifier, routing experiments, and timing analysis.
-  \item \textbf{Member 3}: embedding-guided KG-Trie implementation, failure analysis, report writing, and poster preparation.
-\end{itemize}
-
-
-\clearpage
 \begin{thebibliography}{99}
 \bibitem{berant2013semantic}
 Jonathan Berant, Andrew Chou, Roy Frostig, and Percy Liang. 2013.
@@ -751,6 +742,13 @@ ReAct: Synergizing reasoning and acting in language models. ICLR.
 Wen-tau Yih, Matthew Richardson, Christopher Meek, Ming-Wei Chang, and Jina Suh. 2016.
 The value of semantic parse labeling for knowledge base question answering. ACL.
 \end{thebibliography}
+
+\section*{Individual Contributions}
+\begin{itemize}
+  \item \textbf{Member 1}: baseline reproduction, environment setup, model downloads, and full-test shard execution.
+  \item \textbf{Member 2}: DVI controller, GraphLite/PathScorer verifier, routing experiments, and timing analysis.
+  \item \textbf{Member 3}: embedding-guided KG-Trie implementation, failure analysis, report writing, and poster preparation.
+\end{itemize}
 
 \clearpage
 \appendix
