@@ -652,6 +652,8 @@ A third next step is learned answer typing. Current answer-aware refinement uses
 
 A fourth next step is unified evidence scoring. Embedding-guided KG-Trie, GraphLite, and DVI currently produce partially separate scores and metadata. A unified evidence object should store path text, entity IDs, source entity, hop length, semantic score, cross-encoder score, relation overlap, generic-source penalty, and constraint ID. This object can be passed through retrieval, verification, intersection, and final answer generation without losing provenance.
 
+\clearpage
+\onecolumn
 \section{Conclusion}
 We reproduced GCR and implemented three modifications for complex KGQA: DVI, GraphLite, and embedding-guided KG-Trie construction. DVI adds explicit constraint decomposition, per-constraint verification, deterministic candidate intersection, and confidence-gated routing. GraphLite studies a faster verifier based on entity-level graph enumeration and neural scoring. Embedding-guided KG-Trie changes trie construction so that semantically relevant 3-hop evidence can enter the decoder without uncontrolled path explosion.
 
