@@ -1,12 +1,10 @@
-# TriGCR: Tri-Path Constraint-Aware Graph Reasoning for Faithful Knowledge-Grounded QA
+# TriGCR: Constraint-Aware Graph Reasoning for Faithful Knowledge-Grounded QA
 
-This repository is a cleaned GitHub release package for **TriGCR**, a paper-style system for faithful knowledge-grounded question answering. The project was developed for an AIAA 4051 final research project on complex KGQA with graph-constrained reasoning. It keeps the original Graph-Constrained Reasoning (GCR) interface and organizes three implemented extensions:
+**TriGCR** studies faithful knowledge-grounded question answering with graph-constrained reasoning. The code builds on Graph-Constrained Reasoning (GCR) and adds three extensions for complex KGQA:
 
 1. **DVI (Decompose-Verify-Intersect)**: decomposes a complex question into atomic constraints, verifies each constraint on the knowledge graph, and intersects candidate answer sets with deterministic Python logic.
 2. **GraphLite / PathScorer**: replaces expensive KG-LLM verification with explicit graph enumeration plus neural path/entity scoring.
 3. **Embedding-guided KG-Trie**: ranks candidate paths by semantic similarity before trie construction so that useful 3-hop evidence can be added without uncontrolled path explosion.
-
-The package intentionally excludes large datasets, generated predictions, model checkpoints, caches, API keys, and local runtime directories. It includes source code, lightweight experiment summaries, the final report PDF, and the figures used in the paper.
 
 ## Visual Overview
 
@@ -40,7 +38,7 @@ The package intentionally excludes large datasets, generated predictions, model 
 | GraphLite / PathScorer | Entity/path verifier | 42.14 | 45.09 | **3.09s** |
 | Embedding-guided KG-Trie | CWQ20, 3-hop embedding top-1 | 45.56 | -- | probe |
 
-Full experiment tables, ablations, oracle-routing headroom, and representative failure cases are in [`results_summary/EXPERIMENT_TABLES.md`](results_summary/EXPERIMENT_TABLES.md).
+Experiment tables, ablations, oracle-routing headroom, and representative failure cases are in [`results_summary/EXPERIMENT_TABLES.md`](results_summary/EXPERIMENT_TABLES.md).
 
 ## Repository Layout
 
@@ -55,7 +53,7 @@ TriGCR/
 ├── figures/                    # Overview, architecture, and trace figures used in README/report
 ├── results_summary/
 │   ├── RESULTS.md               # Compact metric summary from archived experiments
-│   └── EXPERIMENT_TABLES.md      # GitHub-readable main tables and ablations
+│   └── EXPERIMENT_TABLES.md      # Main tables and ablations
 ├── datasets/
 │   └── DATASET_LINKS.md          # Dataset URLs and loading commands
 ├── poster/
@@ -103,9 +101,9 @@ cp code/dvi_gcr/.env.example code/dvi_gcr/.env
 
 Do not commit `.env`, model checkpoints, generated prediction files, or raw datasets.
 
-## Smoke Checks
+## Quick Checks
 
-After activating the `GCR` environment, these commands verify that the packaged code imports and that the main entry points expose their CLIs. They do not download LLM checkpoints or run full inference.
+After activating the `GCR` environment, these commands check imports and command-line entry points without running full model inference.
 
 ```bash
 python -m compileall -q code/dvi_gcr code/graphlite code/embedding_guided_kgtrie
@@ -126,7 +124,7 @@ python train_cross_encoder.py --help
 python train_entity_verifier.py --help
 ```
 
-Full reproduction additionally requires the Hugging Face model checkpoints, the RoG datasets listed in `datasets/DATASET_LINKS.md`, and API credentials for general-LLM decomposition or final answering.
+Full experiments require the Hugging Face model checkpoints, the RoG datasets listed in `datasets/DATASET_LINKS.md`, and API credentials for general-LLM decomposition or final answering.
 
 ## Example Commands
 
@@ -180,8 +178,8 @@ less kgtrie_enhanced_changes.patch
 
 ## Results and Report
 
-The final paper is included at `report/TriGCR_final_report.pdf`, and the poster is included at `poster/TriGCR_poster.pdf`. Dataset links are listed in `datasets/DATASET_LINKS.md`. A compact results table is in `results_summary/RESULTS.md`. The full archived raw outputs were deliberately not included because they are large and include generated predictions that are not needed for a clean GitHub release.
+The paper is at `report/TriGCR_final_report.pdf`, and the poster is at `poster/TriGCR_poster.pdf`. Dataset links are listed in `datasets/DATASET_LINKS.md`. A concise metric summary is in `results_summary/RESULTS.md`.
 
 ## Provenance
 
-This project builds on the MIT-licensed Graph-Constrained Reasoning codebase. The included `LICENSE` is copied from the base project. Project-specific code and report artifacts are organized here for reproducibility and review.
+This work builds on the MIT-licensed Graph-Constrained Reasoning codebase. The included `LICENSE` is copied from the base project.

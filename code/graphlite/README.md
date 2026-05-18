@@ -1,6 +1,6 @@
 # GraphLite Prototype
 
-This directory contains the GraphLite entity-level prototype extracted from `lite_framework.rar`. The archive is kept for provenance, and the extracted source is provided for direct inspection.
+This directory contains the GraphLite entity-level prototype extracted from `lite_framework.rar`.
 
 GraphLite replaces token-by-token KG-LLM path generation with a structured verifier:
 
@@ -21,4 +21,4 @@ python train_cross_encoder.py --help
 python train_entity_verifier.py --help
 ```
 
-The standalone scripts default to `--data_path rmanluo`, matching the dataset links in the submission package. Full runs still require model checkpoints or trained verifier checkpoints.
+The standalone scripts default to `--data_path rmanluo`, matching `datasets/DATASET_LINKS.md`. Full runs require model checkpoints or trained verifier checkpoints.

@@ -1,6 +1,6 @@
 # Experiment Tables
 
-This file collects the important experiment tables from the TriGCR report in GitHub-readable Markdown. Values are percentages unless noted otherwise. Raw prediction files are intentionally excluded from this repository.
+This file collects the main experiment tables from the TriGCR report. Values are percentages unless noted otherwise.
 
 ## Table 1: Full-Test RoG-CWQ Results
 

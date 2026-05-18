@@ -1,6 +1,6 @@
 """Build question-path training data for a lightweight KGQA verifier.
 
-The verifier target is deliberately simple: given a question and one DFS
+The verifier target is question-path relevance: given a question and one DFS
 candidate path, predict whether the path ends at a gold answer entity. This
 matches the entity/relation-level decoding direction while avoiding labels from
 noisy final-answer generations.

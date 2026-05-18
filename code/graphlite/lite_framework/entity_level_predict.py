@@ -36,7 +36,7 @@ if args.shuffle_seed is not None:
     dataset = dataset.shuffle(seed=args.shuffle_seed)
 
 if args.entity_verifier_path and args.verifier_path:
-    # Lite mode: both verifiers loaded, Llama not needed
+    # Lite mode: both verifiers loaded, skip Llama loading
     decoder = EntityLevelDecoder(None, tokenizer)
     decoder.load_verifier(args.verifier_path, args.verifier_model)
     decoder.load_entity_verifier(args.entity_verifier_path, args.verifier_model)

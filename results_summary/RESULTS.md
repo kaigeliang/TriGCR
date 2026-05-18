@@ -1,8 +1,6 @@
 # Results Summary
 
-This file summarizes the metrics reported from the archived experiments. Full prediction files and raw result directories are intentionally excluded from this GitHub package to keep the repository small.
-
-For the full GitHub-readable table set, see [`EXPERIMENT_TABLES.md`](EXPERIMENT_TABLES.md).
+This file summarizes the main metrics. For the full table set, see [`EXPERIMENT_TABLES.md`](EXPERIMENT_TABLES.md).
 
 ## Main Full-Test Results
 
