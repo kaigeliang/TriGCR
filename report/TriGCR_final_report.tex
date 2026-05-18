@@ -12,6 +12,8 @@
 \usepackage{url}
 \usepackage{microtype}
 \usepackage{float}
+\usepackage{fvextra}
+\DefineVerbatimEnvironment{verbatim}{Verbatim}{breaklines=true,breakanywhere=true,fontsize=\scriptsize}
 \setlength{\textfloatsep}{6pt plus 1pt minus 2pt}
 \setlength{\floatsep}{6pt plus 1pt minus 2pt}
 \setlength{\intextsep}{6pt plus 1pt minus 2pt}
@@ -652,8 +654,6 @@ A third next step is learned answer typing. Current answer-aware refinement uses
 
 A fourth next step is unified evidence scoring. Embedding-guided KG-Trie, GraphLite, and DVI currently produce partially separate scores and metadata. A unified evidence object should store path text, entity IDs, source entity, hop length, semantic score, cross-encoder score, relation overlap, generic-source penalty, and constraint ID. This object can be passed through retrieval, verification, intersection, and final answer generation without losing provenance.
 
-\clearpage
-\onecolumn
 \section{Conclusion}
 We reproduced GCR and implemented three modifications for complex KGQA: DVI, GraphLite, and embedding-guided KG-Trie construction. DVI adds explicit constraint decomposition, per-constraint verification, deterministic candidate intersection, and confidence-gated routing. GraphLite studies a faster verifier based on entity-level graph enumeration and neural scoring. Embedding-guided KG-Trie changes trie construction so that semantically relevant 3-hop evidence can enter the decoder without uncontrolled path explosion.
 
@@ -752,7 +752,6 @@ The value of semantic parse labeling for knowledge base question answering. ACL.
   \item \textbf{yaoxianshan}: embedding-guided KG-Trie track, including semantic path ranking, 3-hop path-budget experiments, embedding ablations, artifact cleanup, and poster preparation.
 \end{itemize}
 
-\clearpage
 \appendix
 
 \section{Appendix: Reproducibility and Extra Details}
@@ -762,7 +761,7 @@ This appendix contains reproduction commands, schemas, artifact maps, and additi
 
 
 \subsection{Dataset Links}
-The released code does not bundle the full RoG data or Freebase-derived graph files because they are large benchmark artifacts. The submission package instead includes \path{datasets/DATASET_LINKS.md}. The reproduction commands use the Hugging Face dataset identifiers \path{rmanluo/RoG-cwq} and \path{rmanluo/RoG-webqsp}, corresponding to \href{https://huggingface.co/datasets/rmanluo/RoG-cwq}{RoG-CWQ} and \href{https://huggingface.co/datasets/rmanluo/RoG-webqsp}{RoG-WebQSP}. Local experiments in the archive load these datasets through the same \code{--data\_path rmanluo --d RoG-cwq} and \code{--data\_path rmanluo --d RoG-webqsp} conventions.
+The released code does not bundle the full RoG data or Freebase-derived graph files because they are large benchmark artifacts. The submission package instead includes \path{datasets/DATASET_LINKS.md}. The reproduction commands use the Hugging Face dataset identifiers \code{rmanluo/RoG-cwq} and \code{rmanluo/RoG-webqsp}, corresponding to \href{https://huggingface.co/datasets/rmanluo/RoG-cwq}{RoG-CWQ} and \href{https://huggingface.co/datasets/rmanluo/RoG-webqsp}{RoG-WebQSP}. Local experiments in the archive load these datasets through the same \code{--data\_path rmanluo --d RoG-cwq} and \code{--data\_path rmanluo --d RoG-webqsp} conventions.
 
 \subsection{Prompt Templates}
 This project uses prompts in two places: the KG-specialized model generates graph-valid reasoning paths under a trie, and the general LLM performs decomposition and final answer synthesis. GraphLite is intentionally different: it replaces the KG-LLM prompt with structured graph enumeration and learned scoring inputs. The templates below are the report-facing versions of the code prompts; placeholders such as \code{\{question\}} and \code{\{entities\}} are filled by the workflow scripts.
@@ -950,11 +949,10 @@ Artifact & Description \\
 \subsection{Code Locations}
 \begin{itemize}
   \item DVI implementation: \path{code/dvi_gcr/workflow/predict_dvi.py}, \path{code/dvi_gcr/src/dvi/decomposer.py}, \path{code/dvi_gcr/src/dvi/intersector.py}, \path{code/dvi_gcr/src/dvi/answer_aware.py}, and \path{code/dvi_gcr/src/qa_prompt_builder.py}.
-  \item GraphLite entity-level prototype: \path{lite_framework.rar}, containing \path{entity_level_decoder.py}, \path{cross_encoder_verifier.py}, \path{graph_walker.py}, \path{graph_encoder.py}, \path{train_cross_encoder.py}, and \path{train_entity_verifier.py}.
+  \item GraphLite entity-level prototype: \path{code/graphlite/lite_framework.rar}; extracted source files are packaged at \path{code/graphlite/lite_framework/entity_level_decoder.py}, \path{code/graphlite/lite_framework/cross_encoder_verifier.py}, \path{code/graphlite/lite_framework/graph_walker.py}, \path{code/graphlite/lite_framework/graph_encoder.py}, \path{code/graphlite/lite_framework/train_cross_encoder.py}, and \path{code/graphlite/lite_framework/train_entity_verifier.py}.
   \item Integrated GraphLite / PathScorer implementation: \path{code/dvi_gcr/src/dvi/path_scorer.py}, \path{code/dvi_gcr/workflow/build_path_verifier_data.py}, and \path{code/dvi_gcr/workflow/train_path_reranker.py}.
   \item Embedding-guided KG-Trie implementation: \path{code/embedding_guided_kgtrie/overlay/src/qa_prompt_builder.py} and \path{code/embedding_guided_kgtrie/overlay/workflow/predict_paths_and_answers.py}.
-  \item Main DVI results: \path{submission_20260510/results/DVI_v2_merged/}, \path{submission_20260510/results/DVI_v2_hybrid/}, and \path{submission_20260510/results/DVI_scorer_baseline_aligned/}.
-  \item Main embedding results: \path{archive/20260509_keep_graph_code/experiment_results/enhanced_baseline_aligned_*}, \path{kgtrie_v2_cwq100_*}, and \path{kgtrie_v2_webqsp100_*}.
+  \item Packaged result summaries: \path{results_summary/EXPERIMENT_TABLES.md} and \path{results_summary/RESULTS.md}. These files contain the full-test baseline, raw DVI, routed DVI, GraphLite/PathScorer, embedding-guided KG-Trie, oracle-routing, and failure-analysis tables used in the report.
 \end{itemize}
 
 \subsection{DVI Gate Ablation}
@@ -992,12 +990,12 @@ On CWQ20, the 2-hop group-beam baseline has 27.83 F1, 2-hop beam early stopping 
 
 \paragraph{Libya anthem question.} Question: ``Which man is the leader of the country that uses Libya, Libya, Libya as its national anthem?'' Gold: Abdullah al-Thani. The system retrieves paths to Libya and prime-minister entities but returns generic roles or languages. This is a multi-entity intersection plus answer-type failure.
 
-\subsection{Main Result Files}
+\subsection{Packaged Result Files}
 \begin{itemize}
-  \item GCR baselines: \path{submission_20260510/results/combined_baselines/RoG-cwq/}.
-  \item Raw DVI full-test outputs: \path{submission_20260510/results/DVI_v2_merged/RoG-cwq/}.
-  \item Routed DVI full-test outputs: \path{submission_20260510/results/DVI_v2_hybrid/RoG-cwq/}.
-  \item GraphLite / PathScorer outputs: \path{submission_20260510/results/DVI_scorer_baseline_aligned/RoG-cwq/}.
+  \item Main experiment tables and ablations: \path{results_summary/EXPERIMENT_TABLES.md}.
+  \item Compact metric summary: \path{results_summary/RESULTS.md}.
+  \item Dataset download and loading links: \path{datasets/DATASET_LINKS.md}.
 \end{itemize}
+The raw generated prediction directories are intentionally not part of the submission package because they are large and regenerable. All file paths named in the artifact map and code-location list above are relative to the submitted package root.
 
 \end{document}
