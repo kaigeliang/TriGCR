@@ -1,16 +1,18 @@
 """Entity-Level Decoding QA: MC selection of relations/entities, no token generation."""
 import sys, os, json, argparse
-sys.path.insert(0, 'src')
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'dvi_gcr')))
 from src.utils import graph_utils, utils
 from src.llms import get_registed_model
 from transformers import AutoTokenizer
 from datasets import load_dataset
 from tqdm import tqdm
-from src.entity_level_decoder import EntityLevelDecoder
+from entity_level_decoder import EntityLevelDecoder
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--split', default='test[:50]')
 parser.add_argument('--model_name', default='llama318B')
+parser.add_argument('--data_path', default='rmanluo')
 parser.add_argument('--d', '-d', default='RoG-webqsp')
 parser.add_argument('--shuffle_seed', type=int, default=None)
 parser.add_argument('--max_depth', type=int, default=2)
@@ -27,8 +29,9 @@ LLM = get_registed_model(args1.model_name)
 LLM.add_args(parser)
 args = parser.parse_args()
 
-tokenizer = AutoTokenizer.from_pretrained(args.model_path)
-dataset = load_dataset(f'local_datasets/{args.d}', split=args.split)
+tokenizer_source = args.model_path or args.verifier_model
+tokenizer = AutoTokenizer.from_pretrained(tokenizer_source)
+dataset = load_dataset(os.path.join(args.data_path, args.d), split=args.split)
 if args.shuffle_seed is not None:
     dataset = dataset.shuffle(seed=args.shuffle_seed)
 

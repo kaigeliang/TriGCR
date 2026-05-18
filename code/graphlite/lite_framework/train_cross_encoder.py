@@ -7,9 +7,10 @@ Fixes vs v1:
 - Step-level loss logging
 """
 import sys, random, argparse, os
-sys.path.insert(0, 'src')
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'dvi_gcr')))
 from src.utils import graph_utils, utils
-from src.cross_encoder_verifier import CrossEncoderVerifier
+from cross_encoder_verifier import CrossEncoderVerifier
 from datasets import load_dataset
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -68,8 +69,8 @@ def build_training_data(dataset, n_neg_per_positive: int = 3):
 def main(args):
     cwq_split = f'train[:{args.max_questions}]' if args.max_questions > 0 else 'train'
     wqsp_split = f'train[:{args.max_questions}]' if args.max_questions > 0 else 'train'
-    ds_cwq = load_dataset('local_datasets/RoG-cwq', split=cwq_split)
-    ds_wqsp = load_dataset('local_datasets/RoG-webqsp', split=wqsp_split)
+    ds_cwq = load_dataset(os.path.join(args.data_path, 'RoG-cwq'), split=cwq_split)
+    ds_wqsp = load_dataset(os.path.join(args.data_path, 'RoG-webqsp'), split=wqsp_split)
 
     print(f'CWQ train: {len(ds_cwq)}, WebQSP train: {len(ds_wqsp)}')
 
@@ -238,6 +239,7 @@ class VerifierDataset(Dataset):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--data_path', default='rmanluo')
     parser.add_argument('--model_name', default='microsoft/deberta-v3-base')
     parser.add_argument('--batch_size', type=int, default=16)
     parser.add_argument('--lr', type=float, default=2e-5)

@@ -345,7 +345,7 @@ def main() -> None:
     parser.add_argument("--model_name", default="gpt-4o-mini")
     parser.add_argument("--proxy", default="socks5h://127.0.0.1:1080")
     parser.add_argument("--referer", default="https://localhost")
-    parser.add_argument("--title", default="gcr-dvi-part2-baseline")
+    parser.add_argument("--title", default="dvi-gcr-part2-baseline")
     parser.add_argument("--n", type=int, default=8)
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--max_paths", type=int, default=10)

@@ -10,4 +10,15 @@ GraphLite replaces token-by-token KG-LLM path generation with a structured verif
 4. Score question-path-entity triples with an entity verifier.
 5. Optionally expand selected candidates to two hops.
 
-Core files are under `lite_framework/`. The integrated, lighter-weight PathScorer variant used by the DVI codebase is in `../gcr-dvi/src/dvi/path_scorer.py`.
+Core files are under `lite_framework/`. The integrated, lighter-weight PathScorer variant used by the DVI codebase is in `../dvi_gcr/src/dvi/path_scorer.py`.
+
+
+Quick CLI checks from `code/graphlite/lite_framework/`:
+
+```bash
+python entity_level_predict.py --help
+python train_cross_encoder.py --help
+python train_entity_verifier.py --help
+```
+
+The standalone scripts default to `--data_path rmanluo`, matching the dataset links in the submission package. Full runs still require model checkpoints or trained verifier checkpoints.

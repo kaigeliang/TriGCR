@@ -104,6 +104,31 @@ cp code/dvi_gcr/.env.example code/dvi_gcr/.env
 
 Do not commit `.env`, model checkpoints, generated prediction files, or raw datasets.
 
+## Smoke Checks
+
+After activating the `GCR` environment, these commands verify that the packaged code imports and that the main entry points expose their CLIs. They do not download LLM checkpoints or run full inference.
+
+```bash
+python -m compileall -q code/dvi_gcr code/graphlite code/embedding_guided_kgtrie
+
+cd code/dvi_gcr
+python workflow/predict_paths_and_answers.py --help
+python workflow/predict_dvi.py --help
+python workflow/predict_final_answer.py --help
+python workflow/build_path_verifier_data.py --help
+python workflow/train_path_reranker.py --help
+
+cd ../embedding_guided_kgtrie/overlay
+python workflow/predict_paths_and_answers.py --help
+
+cd ../../graphlite/lite_framework
+python entity_level_predict.py --help
+python train_cross_encoder.py --help
+python train_entity_verifier.py --help
+```
+
+Full reproduction additionally requires the Hugging Face model checkpoints, the RoG datasets listed in `datasets/DATASET_LINKS.md`, and API credentials for general-LLM decomposition or final answering.
+
 ## Example Commands
 
 Run the GCR-style path generation stage:

@@ -24,12 +24,12 @@ class EntityLevelDecoder:
 
     def load_verifier(self, verifier_path: str, model_name: str = 'microsoft/deberta-v3-base'):
         """Load a trained cross-encoder verifier for candidate reranking."""
-        from src.cross_encoder_verifier import CrossEncoderVerifier
+        from cross_encoder_verifier import CrossEncoderVerifier
         self.verifier = CrossEncoderVerifier.load(verifier_path, model_name, self.device)
 
     def load_entity_verifier(self, verifier_path: str, model_name: str = 'microsoft/deberta-v3-base'):
         """Load a trained entity-level verifier for entity scoring."""
-        from src.cross_encoder_verifier import CrossEncoderVerifier
+        from cross_encoder_verifier import CrossEncoderVerifier
         self.entity_verifier = CrossEncoderVerifier.load(verifier_path, model_name, self.device)
 
     @staticmethod
