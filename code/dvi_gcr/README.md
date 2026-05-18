@@ -49,7 +49,7 @@ Final Candidates = S1 ∩ S2 ∩ S3 = {DiCaprio}
 ## Project Structure
 
 ```
-gcr-dvi/
+dvi_gcr/
 ├── src/
 │   ├── dvi/
 │   │   ├── __init__.py              # Module exports

@@ -41,7 +41,7 @@
 \title{TriGCR: Constraint-Aware KG-Trie Reasoning for Knowledge-Grounded LLMs:\
 DVI, GraphLite, and Embedding-Guided Path Selection}
 \author{AIAA 4051 Final Research Project: Knowledge Grounded LLM Reasoner\\
-Team Members: \emph{[fill in names]}\\
+Team Members: kaigeliang, fangzhehuang, and yaoxianshan\\
 Project Manager: Jiujiu Chen}
 \date{May 2026}
 
@@ -78,7 +78,7 @@ The archive shows that no single modification dominates. DVI is closest to a rea
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=\textwidth]{project_overview_handdrawn_gpt-image-2-v4.png}
+\includegraphics[width=\textwidth]{trigcr_project_overview.png}
 \caption{Project overview in a hand-drawn research-figure style. The three modification lines, DVI, GraphLite, and embedding-guided KG-Trie, are parallel research directions evaluated against the reproduced GCR baseline; only DVI includes an internal gate against GCR.}
 \label{fig:overview-architecture}
 \end{figure*}
@@ -248,7 +248,7 @@ The enhanced implementation adds lexical and structural features to the embeddin
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=\textwidth,height=0.48\textheight,keepaspectratio]{method_architecture_implementation_blueprint_gpt-image-2-v5.png}
+\includegraphics[width=\textwidth,height=0.48\textheight,keepaspectratio]{trigcr_method_architecture.png}
 \caption{Implementation-level method architecture. Unlike the project overview, this figure expands each method into internal modules, intermediate data structures, and control decisions: DVI tracks constraints and candidate sets, GraphLite replaces KG-LLM decoding with relation/entity/path verifiers, and embedding-guided KG-Trie ranks and budgets paths before trie construction.}
 \label{fig:method-architectures}
 \end{figure*}
@@ -267,7 +267,7 @@ Figure~\ref{fig:q2a-trace} compares the three method-specific traces on one comp
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=\textwidth,height=0.38\textheight,keepaspectratio]{three_method_traces_gpt-image-2-v3.png}
+\includegraphics[width=\textwidth,height=0.38\textheight,keepaspectratio]{trigcr_reasoning_traces.png}
 \caption{Three separate question-to-answer traces for the same anthem-country-religion query. DVI traces decomposition and candidate intersection, GraphLite traces relation/entity verification and pruning, and embedding-guided KG-Trie traces semantic path ranking before constrained decoding.}
 \label{fig:q2a-trace}
 \end{figure*}
@@ -305,7 +305,7 @@ Routing features & Stores candidate-set size, fallback mode, relation/filter cou
 \end{table*}
 
 \subsection{Code Organization}
-The GitHub artifact keeps the three method tracks separated. The main implementation is in \path{code/gcr-dvi}; the embedding-guided KG-Trie patch is in \path{code/embedding\_kgtrie}; and the standalone GraphLite prototype is in \path{code/graphlite}. The separation is deliberate: DVI, GraphLite, and embedding-guided path selection answer different engineering questions and should be testable independently before being merged into one pipeline.
+The GitHub artifact keeps the three method tracks separated. The main implementation is in \path{code/dvi_gcr}; the embedding-guided KG-Trie patch is in \path{code/embedding_guided_kgtrie}; and the standalone GraphLite prototype is in \path{code/graphlite}. The separation is deliberate: DVI, GraphLite, and embedding-guided path selection answer different engineering questions and should be testable independently before being merged into one pipeline.
 
 \subsection{Caching, Runtime, and Reproducibility}
 DVI uses a decomposition cache to avoid repeated API calls. Full-test runs can be expensive because they combine local KG model inference with API-backed decomposition and final answering. The timing summaries in the archive are therefore part of the evidence: they show which parts of the pipeline dominate runtime. GraphLite's advantage is most visible here, because explicit path scoring avoids the slowest KG-LLM constrained decoding step.
@@ -747,9 +747,9 @@ The value of semantic parse labeling for knowledge base question answering. ACL.
 
 \section*{Individual Contributions}
 \begin{itemize}
-  \item \textbf{Member 1}: baseline reproduction, environment setup, model downloads, and full-test shard execution.
-  \item \textbf{Member 2}: DVI controller, GraphLite/PathScorer verifier, routing experiments, and timing analysis.
-  \item \textbf{Member 3}: embedding-guided KG-Trie implementation, failure analysis, report writing, and poster preparation.
+  \item \textbf{kaigeliang}: DVI track, including question decomposition, per-constraint verification, candidate intersection, answer-aware refinement, routed DVI experiments, failure analysis, and final report integration.
+  \item \textbf{fangzhehuang}: GraphLite track, including entity-level graph enumeration, relation/entity verifier design, PathScorer integration, runtime comparison, and GraphLite experiment summaries.
+  \item \textbf{yaoxianshan}: embedding-guided KG-Trie track, including semantic path ranking, 3-hop path-budget experiments, embedding ablations, artifact cleanup, and poster preparation.
 \end{itemize}
 
 \clearpage
@@ -760,12 +760,134 @@ The value of semantic parse labeling for knowledge base question answering. ACL.
 This appendix contains reproduction commands, schemas, artifact maps, and additional compact notes that support the expanded technical report.
 
 
+
+\subsection{Dataset Links}
+The released code does not bundle the full RoG data or Freebase-derived graph files because they are large benchmark artifacts. The submission package instead includes \path{datasets/DATASET_LINKS.md}. The reproduction commands use the Hugging Face dataset identifiers \path{rmanluo/RoG-cwq} and \path{rmanluo/RoG-webqsp}, corresponding to \href{https://huggingface.co/datasets/rmanluo/RoG-cwq}{RoG-CWQ} and \href{https://huggingface.co/datasets/rmanluo/RoG-webqsp}{RoG-WebQSP}. Local experiments in the archive load these datasets through the same \code{--data\_path rmanluo --d RoG-cwq} and \code{--data\_path rmanluo --d RoG-webqsp} conventions.
+
+\subsection{Prompt Templates}
+This project uses prompts in two places: the KG-specialized model generates graph-valid reasoning paths under a trie, and the general LLM performs decomposition and final answer synthesis. GraphLite is intentionally different: it replaces the KG-LLM prompt with structured graph enumeration and learned scoring inputs. The templates below are the report-facing versions of the code prompts; placeholders such as \code{\{question\}} and \code{\{entities\}} are filled by the workflow scripts.
+
+\paragraph{Baseline GCR and embedding-guided KG-Trie path prompt.}
+This prompt is used by the baseline path-generation workflow and by the embedding-guided overlay after the path pool has been ranked and admitted into the KG-Trie.
+\begin{verbatim}
+Reasoning path is a sequence of triples in the KG that connects the topic
+entities in the question to answer entities. Given a question, please generate
+some reasoning paths in the KG starting from the topic entities to answer the
+question.
+
+# Question:
+{question}
+# Topic entities:
+{entities}
+\end{verbatim}
+
+\paragraph{DVI decomposition system prompt.}
+The decomposition call asks a general LLM to produce strict JSON rather than prose. This keeps the controller deterministic after the LLM call.
+\begin{verbatim}
+You are a knowledge graph query analyzer.
+Decompose a complex question into atomic constraints, each anchored to ONE known
+entity. Output valid JSON only. No extra text.
+\end{verbatim}
+
+\paragraph{DVI decomposition user prompt.}
+The user prompt defines the output schema and gives few-shot examples. The key design decision is that relation and attribute constraints must be anchored to known question entities, while literal constraints become filter predicates.
+\begin{verbatim}
+Decompose the question into atomic constraints over the answer variable.
+
+Use these constraint types:
+- "relation":   the answer is reachable from anchor via KG relations (multi-hop ok)
+- "attribute":  the answer has a property/award linking to anchor
+- "filter":     the answer must satisfy a literal predicate (date, type, count,
+                nationality)
+
+Rules:
+1. Every "relation" or "attribute" constraint must have an "anchor" from q_entities.
+2. Every "filter" constraint must have a "predicate" (Python-evaluable string when
+   possible).
+3. Keep constraints minimal -- one constraint per sub-condition.
+4. All constraints share the same "answer_variable".
+
+Example output:
+{
+  "answer_variable": "actor",
+  "constraints": [
+    {"id": "c1", "type": "relation",  "anchor": "Christopher Nolan",
+     "hint": "films directed by Christopher Nolan starring the actor"},
+    {"id": "c2", "type": "attribute", "anchor": "Golden Globe",
+     "hint": "actor won a Golden Globe award"},
+    {"id": "c3", "type": "attribute", "anchor": "Oscar",
+     "hint": "actor won an Oscar award"},
+    {"id": "c4", "type": "filter", "predicate": "birth_year < 1970"},
+    {"id": "c5", "type": "filter", "predicate": "nationality == 'American'"}
+  ]
+}
+
+Now decompose:
+Question: {question}
+q_entities: {q_entities}
+Output:
+\end{verbatim}
+
+\paragraph{DVI per-constraint mini-trie prompt.}
+After decomposition, DVI builds a separate trie from each constraint anchor. The text prompt remains close to GCR, but the graph constraint and topic-entity list are now scoped to one atomic condition.
+\begin{verbatim}
+Reasoning path is a sequence of triples in the KG that connects the topic
+entities in the question to answer entities. Given a question, please generate
+some reasoning paths in the KG starting from the topic entities to answer the
+question.
+
+# Question:
+{question}
+# Topic entities:
+{constraint_anchor_entities}
+\end{verbatim}
+
+\paragraph{Final answer prompt with candidates.}
+DVI deliberately tells the final LLM that candidate entities may be intermediate. This was added after failure analysis showed that strict endpoint selection can return mediator nodes or broad type entities.
+\begin{verbatim}
+Based on the reasoning paths below, answer the original question.
+The candidate entities are KG entities collected from path endpoints; they may be
+intermediate or noisy, so do not restrict your answer to the candidate list.
+Return all possible final answers, one per line. Keep answers concise (entity
+names only).
+
+# Question:
+{question}
+
+# Reasoning Paths:
+{evidence_paths}
+
+# Candidate or intermediate KG entities:
+{candidates}
+
+Answer:
+\end{verbatim}
+
+\paragraph{Final answer prompt without candidates.}
+This fallback is used when no reliable final candidate set is available but evidence paths still exist.
+\begin{verbatim}
+Based on the reasoning paths below, answer the question.
+Return all possible answers, one per line. Keep answers concise (entity names only).
+
+# Question:
+{question}
+
+# Reasoning Paths:
+{evidence_paths}
+
+Answer:
+\end{verbatim}
+
+\paragraph{GraphLite scoring inputs.}
+GraphLite does not use a natural-language generation prompt during verification. Instead it converts verification into supervised scoring examples. Relation selection scores \code{(question, relation)} pairs, and entity verification scores \code{(question, path, entity)} triples. This is the main architectural difference between GraphLite and KG-LLM DVI: the output space is a ranked list of graph objects rather than generated path text.
+
+
 \subsection{Reproduction Commands}
 The most important command-line entry points are listed below. They are representative commands rather than a guarantee that every full-test run will finish quickly on a small machine.
 
 \begin{verbatim}
 # Baseline GCR path generation
-cd code/gcr-dvi
+cd code/dvi_gcr
 python workflow/predict_paths_and_answers.py \
   --data_path rmanluo --d RoG-cwq --split test \
   --model_name GCR-Meta-Llama-3.1-8B-Instruct \
@@ -811,14 +933,14 @@ A DVI prediction record is a JSON object with a final answer plus intermediate f
 \toprule
 Artifact & Description \\
 \midrule
-\path{code/gcr-dvi/workflow/predict\_dvi.py} & End-to-end DVI pipeline with KG-LLM and PathScorer verification modes. \\
-\path{code/gcr-dvi/src/dvi/decomposer.py} & General-LLM JSON decomposer with fallback and cache support. \\
-\path{code/gcr-dvi/src/dvi/intersector.py} & Tail-entity extraction, candidate-set construction, strict intersection, and relaxed diagnostics. \\
-\path{code/gcr-dvi/src/dvi/answer\_aware.py} & Heuristic answer-type refinement and local graph expansion. \\
-\path{code/gcr-dvi/src/dvi/path\_scorer.py} & Bi-encoder filtering and cross-encoder reranking for enumerated paths. \\
-\path{code/embedding\_kgtrie/overlay/src/qa\_prompt\_builder.py} & Embedding-guided path ranking and KG-Trie construction overlay. \\
-\path{code/graphlite/lite\_framework/entity\_level\_decoder.py} & Standalone GraphLite entity-level graph enumeration and scoring prototype. \\
-\path{results\_summary/EXPERIMENT\_TABLES.md} & GitHub-readable experiment tables corresponding to the report. \\
+\path{code/dvi_gcr/workflow/predict_dvi.py} & End-to-end DVI pipeline with KG-LLM and PathScorer verification modes. \\
+\path{code/dvi_gcr/src/dvi/decomposer.py} & General-LLM JSON decomposer with fallback and cache support. \\
+\path{code/dvi_gcr/src/dvi/intersector.py} & Tail-entity extraction, candidate-set construction, strict intersection, and relaxed diagnostics. \\
+\path{code/dvi_gcr/src/dvi/answer_aware.py} & Heuristic answer-type refinement and local graph expansion. \\
+\path{code/dvi_gcr/src/dvi/path_scorer.py} & Bi-encoder filtering and cross-encoder reranking for enumerated paths. \\
+\path{code/embedding_guided_kgtrie/overlay/src/qa_prompt_builder.py} & Embedding-guided path ranking and KG-Trie construction overlay. \\
+\path{code/graphlite/lite_framework/entity_level_decoder.py} & Standalone GraphLite entity-level graph enumeration and scoring prototype. \\
+\path{results_summary/EXPERIMENT_TABLES.md} & GitHub-readable experiment tables corresponding to the report. \\
 \bottomrule
 \end{tabular}
 \caption{Expanded artifact map for reproducing and extending the project.}
@@ -827,10 +949,10 @@ Artifact & Description \\
 
 \subsection{Code Locations}
 \begin{itemize}
-  \item DVI implementation: \path{gcr-dvi/workflow/predict_dvi.py}, \path{gcr-dvi/src/dvi/decomposer.py}, \path{gcr-dvi/src/dvi/intersector.py}, \path{gcr-dvi/src/dvi/answer_aware.py}, and \path{gcr-dvi/src/qa_prompt_builder.py}.
+  \item DVI implementation: \path{code/dvi_gcr/workflow/predict_dvi.py}, \path{code/dvi_gcr/src/dvi/decomposer.py}, \path{code/dvi_gcr/src/dvi/intersector.py}, \path{code/dvi_gcr/src/dvi/answer_aware.py}, and \path{code/dvi_gcr/src/qa_prompt_builder.py}.
   \item GraphLite entity-level prototype: \path{lite_framework.rar}, containing \path{entity_level_decoder.py}, \path{cross_encoder_verifier.py}, \path{graph_walker.py}, \path{graph_encoder.py}, \path{train_cross_encoder.py}, and \path{train_entity_verifier.py}.
-  \item Integrated GraphLite / PathScorer implementation: \path{gcr-dvi/src/dvi/path_scorer.py}, \path{gcr-dvi/workflow/build_path_verifier_data.py}, and \path{gcr-dvi/workflow/train_path_reranker.py}.
-  \item Embedding-guided KG-Trie implementation: \path{archive/20260509_keep_graph_code/custom_code/kgtrie_enhanced_mods/overlay/src/qa_prompt_builder.py} and \path{archive/20260509_keep_graph_code/custom_code/kgtrie_enhanced_mods/overlay/workflow/predict_paths_and_answers.py}.
+  \item Integrated GraphLite / PathScorer implementation: \path{code/dvi_gcr/src/dvi/path_scorer.py}, \path{code/dvi_gcr/workflow/build_path_verifier_data.py}, and \path{code/dvi_gcr/workflow/train_path_reranker.py}.
+  \item Embedding-guided KG-Trie implementation: \path{code/embedding_guided_kgtrie/overlay/src/qa_prompt_builder.py} and \path{code/embedding_guided_kgtrie/overlay/workflow/predict_paths_and_answers.py}.
   \item Main DVI results: \path{submission_20260510/results/DVI_v2_merged/}, \path{submission_20260510/results/DVI_v2_hybrid/}, and \path{submission_20260510/results/DVI_scorer_baseline_aligned/}.
   \item Main embedding results: \path{archive/20260509_keep_graph_code/experiment_results/enhanced_baseline_aligned_*}, \path{kgtrie_v2_cwq100_*}, and \path{kgtrie_v2_webqsp100_*}.
 \end{itemize}

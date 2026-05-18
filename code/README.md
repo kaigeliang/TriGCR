@@ -2,7 +2,7 @@
 
 This directory separates the three implementation tracks used in the report.
 
-## `gcr-dvi/`
+## `dvi_gcr/`
 
 Main working codebase. It contains the GCR baseline plus the integrated DVI and PathScorer implementations.
 
@@ -31,7 +31,7 @@ Important files:
 - `lite_framework/train_cross_encoder.py`: relation verifier training.
 - `lite_framework/train_entity_verifier.py`: entity verifier training.
 
-## `embedding_kgtrie/`
+## `embedding_guided_kgtrie/`
 
 Overlay patch for embedding-guided KG-Trie construction. It changes how candidate paths are selected before constrained decoding.
 
