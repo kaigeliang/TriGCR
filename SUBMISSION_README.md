@@ -25,4 +25,4 @@ This package is organized for the AIAA 4051 final project submission.
 
 ## Repository
 
-Latest code and report are also available at: https://github.com/kaigeliang/TriGCR
+Latest code and report are also available in the TriGCR GitHub repository.
