@@ -6,7 +6,7 @@
 \usepackage{array}
 \usepackage{enumitem}
 \usepackage{graphicx}
-\graphicspath{{figures/}{reports/figures/}}
+\graphicspath{{figures/}{report/figures/}}
 \usepackage{xcolor}
 \usepackage{hyperref}
 \usepackage{url}
@@ -885,9 +885,10 @@ GraphLite does not use a natural-language generation prompt during verification.
 The most important command-line entry points are listed below. They are representative commands rather than a guarantee that every full-test run will finish quickly on a small machine.
 
 \begin{verbatim}
+# Run from the submitted package root.
+
 # Baseline GCR path generation
-cd code/dvi_gcr
-python workflow/predict_paths_and_answers.py \
+PYTHONPATH=code/dvi_gcr python code/dvi_gcr/workflow/predict_paths_and_answers.py \
   --data_path rmanluo --d RoG-cwq --split test \
   --model_name GCR-Meta-Llama-3.1-8B-Instruct \
   --model_path rmanluo/GCR-Meta-Llama-3.1-8B-Instruct \
@@ -895,17 +896,17 @@ python workflow/predict_paths_and_answers.py \
   --prompt_mode zero-shot --generation_mode group-beam
 
 # DVI with KG-LLM verifier
-python workflow/predict_dvi.py \
+PYTHONPATH=code/dvi_gcr python code/dvi_gcr/workflow/predict_dvi.py \
   --data_path rmanluo --d RoG-cwq --split test \
   --kg_model_name GCR-Meta-Llama-3.1-8B-Instruct \
   --kg_model_path rmanluo/GCR-Meta-Llama-3.1-8B-Instruct \
   --general_model_name gpt-4o-mini \
   --k 10 --index_path_length 2 \
-  --decompose_cache_path data/decompose_cache.json \
+  --decompose_cache_path <runtime-cache-json> \
   --min_candidates 1
 
 # DVI with PathScorer verifier
-python workflow/predict_dvi.py \
+PYTHONPATH=code/dvi_gcr python code/dvi_gcr/workflow/predict_dvi.py \
   --data_path rmanluo --d RoG-cwq --split test \
   --general_model_name gpt-4o-mini \
   --index_path_length 2 \
