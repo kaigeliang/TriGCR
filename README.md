@@ -11,19 +11,19 @@ The package intentionally excludes large datasets, generated predictions, model 
 ## Visual Overview
 
 <p align="center">
-  <img src="report/figures/trigcr_project_overview.png" alt="TriGCR project overview" width="900">
+  <img src="figures/trigcr_project_overview.png" alt="TriGCR project overview" width="900">
 </p>
 
 <p align="center"><strong>Project overview:</strong> the three research tracks extend the reproduced GCR baseline from complementary directions. DVI adds explicit constraint state and intersection, GraphLite studies a faster verifier, and embedding-guided KG-Trie improves long-hop evidence selection.</p>
 
 <p align="center">
-  <img src="report/figures/trigcr_method_architecture.png" alt="TriGCR method architecture" width="900">
+  <img src="figures/trigcr_method_architecture.png" alt="TriGCR method architecture" width="900">
 </p>
 
 <p align="center"><strong>Method architecture:</strong> implementation-level comparison of DVI, GraphLite/PathScorer, and embedding-guided KG-Trie construction.</p>
 
 <p align="center">
-  <img src="report/figures/trigcr_reasoning_traces.png" alt="TriGCR three-method reasoning traces" width="900">
+  <img src="figures/trigcr_reasoning_traces.png" alt="TriGCR three-method reasoning traces" width="900">
 </p>
 
 <p align="center"><strong>Question-to-answer traces:</strong> how the three methods process the same KGQA problem through decomposition, verification, path scoring, candidate construction, and final answering.</p>
@@ -51,9 +51,8 @@ TriGCR/
 │   ├── embedding_guided_kgtrie/        # Overlay patch for embedding-guided KG-Trie construction
 │   └── graphlite/               # GraphLite prototype, extracted from lite_framework.rar
 ├── report/
-│   ├── TriGCR_final_report.pdf
-│   ├── TriGCR_final_report.tex
-│   └── figures/                 # Overview, architecture, and trace figures used in the report
+│   └── TriGCR_final_report.pdf
+├── figures/                    # Overview, architecture, and trace figures used in README/report
 ├── results_summary/
 │   ├── RESULTS.md               # Compact metric summary from archived experiments
 │   └── EXPERIMENT_TABLES.md      # GitHub-readable main tables and ablations

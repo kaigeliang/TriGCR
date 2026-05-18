@@ -7,7 +7,7 @@ This package keeps all project modifications outside the upstream `graph-constra
 From a clean `graph-constrained-reasoning` checkout:
 
 ```bash
-git apply /mnt/data/kaigeliang/kgtrie/custom_code/kgtrie_enhanced_mods/kgtrie_enhanced_changes.patch
+git apply code/embedding_guided_kgtrie/kgtrie_enhanced_changes.patch
 ```
 
 Or copy files from `overlay/` into matching repository-relative paths.
@@ -29,6 +29,4 @@ Embedding-guided 3-hop KG-Trie with `--output_topk 1`:
 - Precision: 55.00
 - Recall: 43.79
 
-Output directory:
-
-`/mnt/data/kaigeliang/kgtrie/experiment_results/kgtrie_enhanced_worktree/results/GenPaths/RoG-cwq/GCR-Qwen2-0.5B-Instruct/test[:20]/emb-top1-zero-shot-beam-early-stopping-k3-index_len3/`
+The compact result is summarized in `results_summary/EXPERIMENT_TABLES.md`; raw generated prediction directories are not included in the submission package.

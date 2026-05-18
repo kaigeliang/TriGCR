@@ -7,7 +7,6 @@ This package is organized for the AIAA 4051 final project submission.
 | Directory / file | Purpose |
 |---|---|
 | `report/TriGCR_final_report.pdf` | Final detailed technical report. |
-| `report/TriGCR_final_report.tex` | LaTeX source for the report. |
 | `poster/TriGCR_poster.pdf` | Final poster. |
 | `code/dvi_gcr/` | Main GCR baseline + DVI controller + PathScorer integration. |
 | `code/graphlite/` | GraphLite entity-level verifier prototype. |
@@ -20,9 +19,9 @@ This package is organized for the AIAA 4051 final project submission.
 
 | Member | Main track |
 |---|---|
-| kaigeliang | DVI (Decompose-Verify-Intersect) |
-| fangzhehuang | GraphLite / PathScorer |
-| yaoxianshan | Embedding-guided KG-Trie |
+| Kaige LIANG | DVI (Decompose-Verify-Intersect) |
+| Fang Zhe HUANG | GraphLite / PathScorer |
+| Yao Xian SHAN | Embedding-guided KG-Trie |
 
 ## Repository
 
